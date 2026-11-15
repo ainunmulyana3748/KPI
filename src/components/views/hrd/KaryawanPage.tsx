@@ -480,7 +480,7 @@ export function KaryawanPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="nama@kpicorp.co.id"
+                    placeholder="nama@kinerja.com"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     required
                   />

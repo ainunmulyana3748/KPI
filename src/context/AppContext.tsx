@@ -9,10 +9,10 @@ import {
   PeriodePenilaian,
   PenilaianKinerja,
   UserAccount,
-  Role,
   KategoriNilai,
   getKategoriByScore,
 } from "@/types/kpi";
+import { createClient } from "@/lib/supabase/client";
 import {
   INITIAL_DIVISI,
   INITIAL_JABATAN,
@@ -42,8 +42,8 @@ interface QuarterStats {
 interface AppContextType {
   // Current session
   currentUser: UserAccount;
-  setCurrentUser: (user: UserAccount) => void;
-  switchRole: (role: Role, userId?: string) => void;
+  authStatus: "loading" | "signed-in" | "signed-out" | "unlinked";
+  signOut: () => Promise<void>;
 
   // Navigation & Page loading
   activeTab: string;
@@ -106,7 +106,7 @@ interface AppContextType {
   deletePeriode: (id: string) => void;
 
   // CRUD Akun Pengguna
-  addUser: (data: Omit<UserAccount, "id">) => void;
+  addUser: (data: Omit<UserAccount, "id"> & { id?: string }) => void;
   updateUser: (id: string, data: Partial<UserAccount>) => void;
   deleteUser: (id: string) => void;
 
@@ -120,14 +120,13 @@ interface AppContextType {
     nilaiAkhir: number | null;
   }[];
 
-  // System
-  resetAllDataToDefault: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isClient, setIsClient] = useState(false);
+  const [authStatus, setAuthStatus] = useState<AppContextType["authStatus"]>("loading");
 
   // States
   const [currentUser, setCurrentUser] = useState<UserAccount>(INITIAL_USERS[0]);
@@ -178,8 +177,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const savedPenilaian = localStorage.getItem("kpi_penilaian");
       if (savedPenilaian) setPenilaianList(JSON.parse(savedPenilaian));
 
-      const savedUser = localStorage.getItem("kpi_current_user");
-      if (savedUser) setCurrentUser(JSON.parse(savedUser));
     } catch {
       // Fallback
     }
@@ -196,7 +193,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("kpi_periode", JSON.stringify(periodeList));
       localStorage.setItem("kpi_users", JSON.stringify(userList));
       localStorage.setItem("kpi_penilaian", JSON.stringify(penilaianList));
-      localStorage.setItem("kpi_current_user", JSON.stringify(currentUser));
     } catch {
       // LocalStorage error ignore
     }
@@ -209,15 +205,97 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     periodeList,
     userList,
     penilaianList,
-    currentUser,
   ]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    let active = true;
+
+    const loadAccount = async (authUser: { id: string; email?: string }) => {
+      const { data, error } = await supabase
+        .from("user_accounts")
+        .select("id, username, email, role, karyawan_id, karyawan_nik, karyawan_nama, avatar")
+        .eq("id", authUser.id)
+        .maybeSingle();
+
+      if (!active) return;
+      if (error || !data || !["hrd", "manager", "karyawan"].includes(data.role)) {
+        setAuthStatus("unlinked");
+        return;
+      }
+
+      const account: UserAccount = {
+        id: data.id,
+        username: data.username,
+        email: data.email || authUser.email || "",
+        role: data.role as UserAccount["role"],
+        karyawanId: data.karyawan_id,
+        karyawanNik: data.karyawan_nik,
+        karyawanNama: data.karyawan_nama,
+        avatar: data.avatar || undefined,
+      };
+
+      setCurrentUser(account);
+      setActiveTab(
+        account.role === "hrd"
+          ? "dashboard"
+          : account.role === "manager"
+            ? "manager-dashboard"
+            : "karyawan-dashboard",
+      );
+      setAuthStatus("signed-in");
+
+      if (account.role === "hrd") {
+        const { data: accounts } = await supabase
+          .from("user_accounts")
+          .select("id, username, email, role, karyawan_id, karyawan_nik, karyawan_nama, avatar");
+        if (active && accounts) {
+          setUserList(accounts.map((row) => ({
+            id: row.id,
+            username: row.username,
+            email: row.email,
+            role: row.role as UserAccount["role"],
+            karyawanId: row.karyawan_id,
+            karyawanNik: row.karyawan_nik,
+            karyawanNama: row.karyawan_nama,
+            avatar: row.avatar || undefined,
+          })));
+        }
+      } else {
+        setUserList([account]);
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) {
+        setAuthStatus("signed-out");
+        setUserList(INITIAL_USERS);
+        return;
+      }
+      setAuthStatus("loading");
+      window.setTimeout(() => void loadAccount(session.user), 0);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const signOut = async () => {
+    await createClient().auth.signOut();
+    setAuthStatus("signed-out");
+    setCurrentUser(INITIAL_USERS[0]);
+    setUserList(INITIAL_USERS);
+    setActiveTab("dashboard");
+  };
 
   // Total Indicator Weight
   const totalBobotIndikator = indikatorList.reduce((acc, curr) => acc + (Number(curr.bobot) || 0), 0);
   const isBobot100 = totalBobotIndikator === 100;
 
   // Active & Completed Period
-  const activePeriode = periodeList.find((p) => p.status === "Aktif") || periodeList[1] || periodeList[0];
+  const activePeriode = periodeList.find((p) => p.status === "Aktif");
   const previousCompletedPeriode =
     periodeList.find((p) => p.status === "Complete" && p.quartal === "Q1") ||
     periodeList.find((p) => p.status === "Complete") ||
@@ -256,39 +334,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const cancelNavigateAwayFromIndicators = () => {
     setShowIndicatorReminderModal(false);
     setPendingTabTarget(null);
-  };
-
-  // Switch role helper
-  const switchRole = (newRole: Role, userId?: string) => {
-    let targetUser: UserAccount | undefined;
-    if (userId) {
-      targetUser = userList.find((u) => u.id === userId);
-    }
-    if (!targetUser) {
-      targetUser = userList.find((u) => u.role === newRole);
-    }
-    if (!targetUser) {
-      targetUser = {
-        id: `mock-${newRole}`,
-        username: `${newRole}.user`,
-        email: `${newRole}@kpicorp.co.id`,
-        role: newRole,
-        karyawanId: karyawanList[0]?.id || "emp-101",
-        karyawanNik: karyawanList[0]?.nik || "EMP-2024-101",
-        karyawanNama: karyawanList[0]?.nama || "Pengguna",
-      };
-    }
-
-    setCurrentUser(targetUser);
-
-    // Switch default landing tab per role
-    if (newRole === "hrd") {
-      setActiveTabWithTransition("dashboard");
-    } else if (newRole === "manager") {
-      setActiveTabWithTransition("manager-dashboard");
-    } else {
-      setActiveTabWithTransition("karyawan-dashboard");
-    }
   };
 
   // Quarter evaluation stats for Dashboard
@@ -542,8 +587,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updatePeriode = (id: string, data: Partial<PeriodePenilaian>) => {
     const existing = periodeList.find((p) => p.id === id);
-    if (existing?.status === "Complete") {
-      return; // Complete cannot be edited
+    if (existing?.status === "Complete" && Object.keys(data).some((key) => key !== "status")) {
+      return;
     }
     setPeriodeList((prev) =>
       prev.map((p) => (p.id === id ? { ...p, ...data } : p))
@@ -563,7 +608,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const emp = karyawanList.find((k) => k.id === data.karyawanId);
     const newUser: UserAccount = {
       ...data,
-      id: `usr-${Date.now()}`,
+      id: data.id || `usr-${Date.now()}`,
       karyawanNama: emp ? emp.nama : data.karyawanNama,
       karyawanNik: emp ? emp.nik : data.karyawanNik,
       avatar: emp?.avatar,
@@ -634,28 +679,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  // Reset to default
-  const resetAllDataToDefault = () => {
-    if (typeof window !== "undefined") {
-      localStorage.clear();
-    }
-    setDivisiList(INITIAL_DIVISI);
-    setJabatanList(INITIAL_JABATAN);
-    setKaryawanList(INITIAL_KARYAWAN);
-    setIndikatorList(INITIAL_INDIKATOR);
-    setPeriodeList(INITIAL_PERIODE);
-    setUserList(INITIAL_USERS);
-    setPenilaianList(INITIAL_PENILAIAN);
-    setCurrentUser(INITIAL_USERS[0]);
-    setActiveTab("dashboard");
-  };
-
   return (
     <AppContext.Provider
       value={{
         currentUser,
-        setCurrentUser,
-        switchRole,
+        authStatus,
+        signOut,
         activeTab,
         setActiveTabWithTransition,
         isLoadingPage,
@@ -702,7 +731,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         savePenilaian,
         getPenilaianByKaryawan,
         getPenilaianForManager,
-        resetAllDataToDefault,
       }}
     >
       {children}

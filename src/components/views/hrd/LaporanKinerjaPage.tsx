@@ -67,8 +67,18 @@ export function LaporanKinerjaPage() {
 
   return (
     <div className="space-y-6">
+      <section className="mb-8 hidden border-b-2 border-indigo-900 pb-5 print:block">
+        <p className="text-xs font-bold uppercase tracking-[0.24em] text-indigo-700">Laporan resmi · Evaluasi kinerja</p>
+        <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">Peringkat Kinerja Karyawan</h1>
+        <div className="mt-3 flex flex-wrap gap-x-8 gap-y-1 text-sm text-slate-600">
+          <span>Periode: <strong className="text-slate-900">{currentPeriodObj?.namaPeriode}</strong></span>
+          <span>Divisi: <strong className="text-slate-900">{selectedDivisi === "all" ? "Semua divisi" : divisiList.find((divisi) => divisi.id === selectedDivisi)?.nama}</strong></span>
+          <span>Dicetak: <strong className="text-slate-900">{new Date().toLocaleDateString("id-ID", { dateStyle: "long" })}</strong></span>
+        </div>
+      </section>
+
       {/* Header & Export Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+      <div className="print:hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-indigo-600" />
@@ -92,7 +102,7 @@ export function LaporanKinerjaPage() {
       </div>
 
       {/* Filter Bar: Periode Penilaian, Divisi, Jabatan */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs print:hidden">
         <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">
           <Filter className="w-4 h-4 text-indigo-600" />
           Filter Kriteria Laporan

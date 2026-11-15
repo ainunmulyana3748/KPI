@@ -19,6 +19,7 @@ import { PeriodePenilaian, PeriodeStatus, QuartalType } from "@/types/kpi";
 
 export function PeriodePenilaianPage() {
   const {
+    currentUser,
     periodeList,
     addPeriode,
     updatePeriode,
@@ -32,7 +33,10 @@ export function PeriodePenilaianPage() {
 
   // Form states
   const [quartal, setQuartal] = useState<QuartalType>("Q2");
-  const [tahun, setTahun] = useState<number>(2026);
+  const currentYear = new Date().getFullYear();
+  const years = [...new Set([...periodeList.map((periode) => periode.tahun), currentYear])].sort((a, b) => b - a);
+  const [selectedYear, setSelectedYear] = useState<number>(years[0] ?? currentYear);
+  const [tahun, setTahun] = useState<number>(currentYear);
   const [namaPeriode, setNamaPeriode] = useState("");
   const [quartalLabel, setQuartalLabel] = useState("April - Juni 2026");
   const [startDate, setStartDate] = useState("");
@@ -86,9 +90,9 @@ export function PeriodePenilaianPage() {
 
   const handleOpenAdd = () => {
     setEditingPeriode(null);
-    const def = getQuartalDefault("Q2", 2026);
+    const def = getQuartalDefault("Q2", currentYear);
     setQuartal("Q2");
-    setTahun(2026);
+    setTahun(currentYear);
     setNamaPeriode(def.nama);
     setQuartalLabel(def.label);
     setStartDate(def.defaultStart);
@@ -180,13 +184,31 @@ export function PeriodePenilaianPage() {
 
       {/* Table Card */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-            Daftar 4 Periode Evaluasi Kerja
-          </span>
-          <span className="text-xs text-slate-500 font-medium">
-            Hari ini: <strong>{todayStr}</strong>
-          </span>
+        <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">
+              Periode evaluasi {selectedYear}
+            </h3>
+            <p className="mt-0.5 text-xs text-slate-500">
+              {periodeList.filter((periode) => periode.tahun === selectedYear).length} periode penilaian
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <label htmlFor="periode-year" className="text-xs font-medium text-slate-500">
+              Tahun
+            </label>
+            <select
+              id="periode-year"
+              value={selectedYear}
+              onChange={(event) => setSelectedYear(Number(event.target.value))}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {years.map((year) => <option key={year} value={year}>{year}</option>)}
+            </select>
+            <span className="hidden text-xs font-medium text-slate-500 sm:inline">
+              Hari ini: <strong>{todayStr}</strong>
+            </span>
+          </div>
         </div>
 
         {/* Table: nomor, nama periode, Quartal, tanggal aktif (start & end), Status(waiting/aktif/complete), aksi (delete/edit disabled jika complete) */}
@@ -205,7 +227,10 @@ export function PeriodePenilaianPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
-              {periodeList.map((p, idx) => {
+              {periodeList
+                .filter((periode) => periode.tahun === selectedYear)
+                .sort((a, b) => a.quartal.localeCompare(b.quartal))
+                .map((p, idx) => {
                 const isComplete = p.status === "Complete";
                 const isAktif = p.status === "Aktif";
 
@@ -253,14 +278,22 @@ export function PeriodePenilaianPage() {
                       </div>
                     </td>
                     <td className="py-3.5 px-4 text-center">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border ${statusBadge}`}
-                      >
-                        {isAktif && (
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping mr-0.5" />
-                        )}
-                        {p.status}
-                      </span>
+                      {currentUser.role === "hrd" ? (
+                        <select
+                          aria-label={`Ubah status ${p.namaPeriode}`}
+                          value={p.status}
+                          onChange={(event) => updatePeriode(p.id, { status: event.target.value as PeriodeStatus })}
+                          className={`rounded-full border px-2.5 py-1 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500 ${statusBadge}`}
+                        >
+                          <option value="Waiting">Waiting</option>
+                          <option value="Aktif">Aktif</option>
+                          <option value="Complete">Complete</option>
+                        </select>
+                      ) : (
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${statusBadge}`}>
+                          {p.status}
+                        </span>
+                      )}
                     </td>
                     <td className="py-3.5 px-4 text-center">
                       {isComplete ? (

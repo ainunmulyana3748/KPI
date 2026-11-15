@@ -2,6 +2,7 @@
 
 import React, { Suspense } from "react";
 import { AppProvider, useApp } from "@/context/AppContext";
+import { AuthGate } from "@/components/auth/AuthGate";
 import { Navbar } from "@/components/layout/Navbar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { LoadingBar } from "@/components/ui/LoadingBar";
@@ -27,9 +28,20 @@ import { FormNilaiKaryawan } from "@/components/views/manager/FormNilaiKaryawan"
 import { DashboardKaryawan } from "@/components/views/karyawan/DashboardKaryawan";
 
 function MainDashboardContent() {
-  const { activeTab } = useApp();
+  const { activeTab, currentUser } = useApp();
 
   const renderActiveView = () => {
+    const hrdTabs = ["dashboard", "divisi", "jabatan", "karyawan", "karyawan-detail", "indikator", "periode", "pengguna", "laporan"];
+    const managerTabs = ["manager-dashboard", "manager-penilaian", "manager-form-nilai"];
+    if (currentUser.role === "karyawan" && (hrdTabs.includes(activeTab) || managerTabs.includes(activeTab))) {
+      return <DashboardKaryawan />;
+    }
+    if (currentUser.role === "manager" && (hrdTabs.includes(activeTab) || activeTab === "karyawan-dashboard")) {
+      return <DashboardManager />;
+    }
+    if (currentUser.role === "hrd" && (managerTabs.includes(activeTab) || activeTab === "karyawan-dashboard")) {
+      return <DashboardHrd />;
+    }
     switch (activeTab) {
       // HRD & Admin Views
       case "dashboard":
@@ -64,7 +76,7 @@ function MainDashboardContent() {
         return <DashboardKaryawan />;
 
       default:
-        return <DashboardHrd />;
+        return currentUser.role === "hrd" ? <DashboardHrd /> : currentUser.role === "manager" ? <DashboardManager /> : <DashboardKaryawan />;
     }
   };
 
@@ -92,14 +104,9 @@ function MainDashboardContent() {
       <footer className="bg-white border-t border-slate-200 py-4 px-6 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>
-            © 2026 Sistem Evaluasi & Manajemen KPI
-            Terintegrasi. Hak Cipta Dilindungi.
+            © 2026 Kinerja. Hak Cipta Dilindungi.
           </span>
-          <div className="flex items-center gap-4 text-[11px] text-slate-400">
-            <span>Next.js & Tailwind CSS</span>
-            <span>•</span>
-            <span>Siap Sinkronisasi Supabase</span>
-          </div>
+
         </div>
       </footer>
     </div>
@@ -109,8 +116,10 @@ function MainDashboardContent() {
 export default function Home() {
   return (
     <AppProvider>
-      <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm font-semibold text-slate-500">Memuat Aplikasi KPI...</div>}>
-        <MainDashboardContent />
+      <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm font-semibold text-slate-500">Memuat Kinerja...</div>}>
+        <AuthGate>
+          <MainDashboardContent />
+        </AuthGate>
       </Suspense>
     </AppProvider>
   );

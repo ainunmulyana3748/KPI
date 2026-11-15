@@ -27,8 +27,10 @@ export function InputPenilaianPage() {
   } = useApp();
 
   const [selectedPeriodeId, setSelectedPeriodeId] = useState<string>(
-    activePeriode?.id || periodeList[1]?.id || periodeList[0]?.id
+    activePeriode?.id || ""
   );
+  const selectedPeriode = periodeList.find((periode) => periode.id === selectedPeriodeId);
+  const isEvaluationOpen = selectedPeriode?.status === "Aktif";
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -73,6 +75,7 @@ export function InputPenilaianPage() {
   });
 
   const handleOpenForm = (karyawanId: string) => {
+    if (!isEvaluationOpen) return;
     setSelectedNilaiInputTarget({
       karyawanId,
       periodeId: selectedPeriodeId,
@@ -104,17 +107,25 @@ export function InputPenilaianPage() {
             onChange={(e) => setSelectedPeriodeId(e.target.value)}
             className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none"
           >
+            {!activePeriode && <option value="">Tidak ada periode aktif</option>}
             {periodeList.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.namaPeriode} ({p.quartalLabel})
+                {p.namaPeriode} ({p.quartalLabel}) — {p.status}
               </option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Table Card */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        {!isEvaluationOpen && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="status">
+            Penilaian hanya dapat diinput pada periode berstatus Aktif. Minta HRD membuka periode terlebih dahulu.
+          </p>
+        )}
+
+        {/* Table Card */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+
         {/* Search & Filter */}
         <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 max-w-md">
@@ -250,11 +261,12 @@ export function InputPenilaianPage() {
                       <td className="py-3.5 px-4 text-center">
                         <button
                           type="button"
+                          disabled={!isEvaluationOpen}
                           onClick={() => handleOpenForm(item.karyawan.id)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold text-xs transition ${
+                          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
                             item.sudahDinilai
-                              ? "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                              : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+                              ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                              : "bg-indigo-600 text-white shadow-xs hover:bg-indigo-700"
                           }`}
                         >
                           <Edit3 className="w-3.5 h-3.5" />

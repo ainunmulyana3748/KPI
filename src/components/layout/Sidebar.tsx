@@ -13,7 +13,6 @@ import {
   BarChart3,
   ClipboardCheck,
   UserCheck,
-  Layers,
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
@@ -110,17 +109,6 @@ export function Sidebar() {
 
   return (
     <aside className="w-full md:w-64 bg-white border-r border-slate-200/90 flex flex-col shrink-0 min-h-[calc(100vh-4rem)]">
-      {/* Role Banner / Context */}
-      <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-          <Layers className="w-3.5 h-3.5 text-indigo-600" />
-          <span>Navigasi {currentUser.role.toUpperCase()}</span>
-        </div>
-        <p className="text-xs text-slate-600 font-medium truncate">
-          {currentUser.karyawanNama}
-        </p>
-      </div>
-
       {/* Navigation List */}
       <nav className="p-3 space-y-1.5 flex-1">
         {currentItems.map((item) => {

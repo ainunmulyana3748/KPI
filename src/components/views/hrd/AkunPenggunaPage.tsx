@@ -34,6 +34,7 @@ export function AkunPenggunaPage() {
   const [role, setRole] = useState<Role>("karyawan");
   const [karyawanId, setKaryawanId] = useState(karyawanList[0]?.id || "");
   const [errorMsg, setErrorMsg] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Delete modal
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -71,16 +72,17 @@ export function AkunPenggunaPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg("");
     if (!username.trim() || !email.trim()) {
-      setErrorMsg("Username dan email wajib diisi!");
+      setErrorMsg("Username dan email wajib diisi.");
       return;
     }
 
     const emp = karyawanList.find((k) => k.id === karyawanId);
     if (!emp) {
-      setErrorMsg("Pilih karyawan pemilik akun!");
+      setErrorMsg("Pilih karyawan pemilik akun.");
       return;
     }
 
@@ -93,18 +95,37 @@ export function AkunPenggunaPage() {
         karyawanNik: emp.nik,
         karyawanNama: emp.nama,
       });
-    } else {
-      addUser({
-        username: username.trim(),
-        email: email.trim(),
-        role,
-        karyawanId: emp.id,
-        karyawanNik: emp.nik,
-        karyawanNama: emp.nama,
-      });
+      setIsModalOpen(false);
+      return;
     }
 
-    setIsModalOpen(false);
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/auth/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: username.trim(),
+          email: email.trim(),
+          role,
+          karyawanId: emp.id,
+          karyawanNik: emp.nik,
+          karyawanNama: emp.nama,
+          avatar: emp.avatar || null,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setErrorMsg(result.error || "Undangan tidak dapat dikirim.");
+        return;
+      }
+      addUser(result.account as UserAccount);
+      setIsModalOpen(false);
+    } catch {
+      setErrorMsg("Koneksi terputus. Periksa jaringan lalu coba lagi.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -296,7 +317,7 @@ export function AkunPenggunaPage() {
                 </label>
                 <input
                   type="email"
-                  placeholder="email@kpicorp.co.id"
+                  placeholder="email@kinerja.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -330,10 +351,11 @@ export function AkunPenggunaPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition shadow-xs flex items-center gap-1.5"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition shadow-xs flex items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Check className="w-4 h-4" />
-                  {editingUser ? "Simpan Perubahan" : "Simpan Pengguna"}
+                  {isSubmitting ? "Mengirim undangan…" : editingUser ? "Simpan Perubahan" : "Kirim Undangan"}
                 </button>
               </div>
             </form>
