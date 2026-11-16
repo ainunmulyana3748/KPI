@@ -8,8 +8,6 @@ import {
   Edit2,
   Trash2,
   Calendar,
-  Clock,
-  CheckCircle2,
   AlertCircle,
   X,
   Check,
@@ -152,11 +150,7 @@ export function PeriodePenilaianPage() {
     setIsModalOpen(false);
   };
 
-  const [todayStr, setTodayStr] = useState("2026-11-14");
-
-  React.useEffect(() => {
-    setTodayStr(new Date().toISOString().split("T")[0]);
-  }, []);
+  const [todayStr] = useState(() => new Date().toISOString().split("T")[0]);
 
   return (
     <div className="space-y-6">
@@ -168,8 +162,7 @@ export function PeriodePenilaianPage() {
             Manajemen Periode Penilaian Quartal
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Penilaian dilakukan setiap 3 bulan (4 Quartal pertahun) dengan batas
-            waktu pengisian aktif dan penutupan otomatis.
+            Penilaian dilakukan setiap 3 bulan (4 Quartal per tahun). HRD mengatur status periode secara manual.
           </p>
         </div>
         <button
@@ -452,9 +445,9 @@ export function PeriodePenilaianPage() {
                   />
                 </div>
                 <p className="col-span-2 text-[10px] text-slate-500 leading-tight">
-                  Status otomatis: <strong>Waiting</strong> sebelum tanggal
-                  mulai, <strong>Aktif</strong> pada rentang pengisian, dan{" "}
-                  <strong>Complete</strong> setelah tanggal akhir terlewati.
+                  Status awal <strong>Waiting</strong>. HRD dapat mengubahnya
+                  menjadi <strong>Aktif</strong> saat periode dibuka, lalu
+                  <strong> Complete</strong> setelah periode ditutup.
                 </p>
               </div>
 

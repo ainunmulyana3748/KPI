@@ -587,9 +587,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updatePeriode = (id: string, data: Partial<PeriodePenilaian>) => {
     const existing = periodeList.find((p) => p.id === id);
-    if (existing?.status === "Complete" && Object.keys(data).some((key) => key !== "status")) {
-      return;
-    }
+    if ("status" in data && currentUser.role !== "hrd") return;
+    if (
+      data.status && !["Waiting", "Aktif", "Complete"].includes(data.status)
+    ) return;
+    if (
+      existing?.status === "Complete" &&
+      Object.keys(data).some((key) => key !== "status")
+    ) return;
+
     setPeriodeList((prev) =>
       prev.map((p) => (p.id === id ? { ...p, ...data } : p))
     );
@@ -604,7 +610,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // User Accounts CRUD
-  const addUser = (data: Omit<UserAccount, "id">) => {
+  const addUser = (data: Omit<UserAccount, "id"> & { id?: string }) => {
     const emp = karyawanList.find((k) => k.id === data.karyawanId);
     const newUser: UserAccount = {
       ...data,
