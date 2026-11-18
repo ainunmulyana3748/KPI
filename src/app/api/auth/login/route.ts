@@ -6,14 +6,26 @@ export async function POST(request: NextRequest) {
   if (origin) {
     let originHost = "";
     try {
-      originHost = new URL(origin).host.toLowerCase();
+      const parsedOrigin = new URL(origin);
+      if (parsedOrigin.protocol !== "http:" && parsedOrigin.protocol !== "https:") {
+        throw new Error("Unsupported origin protocol");
+      }
+      originHost = parsedOrigin.host.toLowerCase();
     } catch {
       return NextResponse.json({ error: "Permintaan tidak diizinkan." }, { status: 403 });
     }
 
-    const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
-    const requestHost = forwardedHost || request.headers.get("host") || request.nextUrl.host;
-    if (originHost !== requestHost.toLowerCase()) {
+    const requestHosts = [
+      request.headers.get("host"),
+      request.headers.get("x-forwarded-host"),
+      request.nextUrl.host,
+    ]
+      .flatMap((host) => host?.split(",") ?? [])
+      .map((host) => host.trim().toLowerCase())
+      .filter(Boolean);
+    const sameOriginBrowserRequest = request.headers.get("sec-fetch-site") === "same-origin";
+
+    if (!requestHosts.includes(originHost) && !sameOriginBrowserRequest) {
       return NextResponse.json({ error: "Permintaan tidak diizinkan." }, { status: 403 });
     }
   }
