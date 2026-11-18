@@ -3,8 +3,19 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
-  if (origin && origin !== request.nextUrl.origin) {
-    return NextResponse.json({ error: "Permintaan tidak diizinkan." }, { status: 403 });
+  if (origin) {
+    let originHost = "";
+    try {
+      originHost = new URL(origin).host.toLowerCase();
+    } catch {
+      return NextResponse.json({ error: "Permintaan tidak diizinkan." }, { status: 403 });
+    }
+
+    const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+    const requestHost = forwardedHost || request.headers.get("host") || request.nextUrl.host;
+    if (originHost !== requestHost.toLowerCase()) {
+      return NextResponse.json({ error: "Permintaan tidak diizinkan." }, { status: 403 });
+    }
   }
 
   let body: Record<string, unknown>;
