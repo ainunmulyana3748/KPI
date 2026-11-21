@@ -623,20 +623,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateUser = (id: string, data: Partial<UserAccount>) => {
-    setUserList((prev) =>
-      prev.map((u) => {
-        if (u.id === id) {
-          const emp = data.karyawanId ? karyawanList.find((k) => k.id === data.karyawanId) : null;
-          return {
-            ...u,
-            ...data,
-            karyawanNama: emp ? emp.nama : u.karyawanNama,
-            karyawanNik: emp ? emp.nik : u.karyawanNik,
-          };
-        }
-        return u;
-      })
-    );
+    const emp = data.karyawanId ? karyawanList.find((k) => k.id === data.karyawanId) : null;
+    const updatedAccount = (account: UserAccount): UserAccount => ({
+      ...account,
+      ...data,
+      karyawanNama: data.karyawanNama ?? emp?.nama ?? account.karyawanNama,
+      karyawanNik: data.karyawanNik ?? emp?.nik ?? account.karyawanNik,
+    });
+
+    setUserList((prev) => prev.map((account) => account.id === id ? updatedAccount(account) : account));
+    setCurrentUser((account) => account.id === id ? updatedAccount(account) : account);
   };
 
   const deleteUser = (id: string) => {

@@ -7,9 +7,7 @@ import {
   Plus,
   Edit2,
   Trash2,
-  User,
   Key,
-  Mail,
   AlertCircle,
   X,
   Check,
@@ -86,40 +84,47 @@ export function AkunPenggunaPage() {
       return;
     }
 
-    if (editingUser) {
-      updateUser(editingUser.id, {
-        username: username.trim(),
-        email: email.trim(),
-        role,
-        karyawanId: emp.id,
-        karyawanNik: emp.nik,
-        karyawanNama: emp.nama,
-      });
-      setIsModalOpen(false);
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/auth/invite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: username.trim(),
-          email: email.trim(),
-          role,
-          karyawanId: emp.id,
-          karyawanNik: emp.nik,
-          karyawanNama: emp.nama,
-          avatar: emp.avatar || null,
-        }),
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        setErrorMsg(result.error || "Undangan tidak dapat dikirim.");
-        return;
+      if (editingUser) {
+        const response = await fetch(`/api/auth/accounts/${encodeURIComponent(editingUser.id)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: username.trim(),
+            role,
+            karyawanId: emp.id,
+            karyawanNik: emp.id === editingUser.karyawanId ? editingUser.karyawanNik : emp.nik,
+            karyawanNama: emp.id === editingUser.karyawanId ? editingUser.karyawanNama : emp.nama,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          setErrorMsg(result.error || "Perubahan akun tidak dapat disimpan.");
+          return;
+        }
+        updateUser(editingUser.id, result.account as Partial<UserAccount>);
+      } else {
+        const response = await fetch("/api/auth/invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: username.trim(),
+            email: email.trim(),
+            role,
+            karyawanId: emp.id,
+            karyawanNik: emp.nik,
+            karyawanNama: emp.nama,
+            avatar: emp.avatar || null,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          setErrorMsg(result.error || "Undangan tidak dapat dikirim.");
+          return;
+        }
+        addUser(result.account as UserAccount);
       }
-      addUser(result.account as UserAccount);
       setIsModalOpen(false);
     } catch {
       setErrorMsg("Koneksi terputus. Periksa jaringan lalu coba lagi.");
@@ -295,6 +300,9 @@ export function AkunPenggunaPage() {
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Jika pemilik tetap sama, nama dan NIK profil akun dipertahankan. Mengganti pemilik akan mengikuti data karyawan yang dipilih.
+                </p>
               </div>
 
               <div>
@@ -320,9 +328,16 @@ export function AkunPenggunaPage() {
                   placeholder="email@kinerja.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  readOnly={Boolean(editingUser)}
+                  aria-describedby={editingUser ? "account-email-help" : undefined}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 read-only:cursor-not-allowed read-only:bg-slate-100 read-only:text-slate-500"
                   required
                 />
+                {editingUser && (
+                  <p id="account-email-help" className="mt-1 text-[11px] text-slate-500">
+                    Email login tidak dapat diubah dari form edit ini.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -355,7 +370,9 @@ export function AkunPenggunaPage() {
                   className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition shadow-xs flex items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Check className="w-4 h-4" />
-                  {isSubmitting ? "Mengirim undangan…" : editingUser ? "Simpan Perubahan" : "Kirim Undangan"}
+                  {isSubmitting
+                    ? editingUser ? "Menyimpan perubahan…" : "Mengirim undangan…"
+                    : editingUser ? "Simpan Perubahan" : "Kirim Undangan"}
                 </button>
               </div>
             </form>
