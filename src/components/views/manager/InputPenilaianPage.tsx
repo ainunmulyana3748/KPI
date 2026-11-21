@@ -191,19 +191,11 @@ export function InputPenilaianPage() {
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-full bg-slate-200 overflow-hidden ring-1 ring-slate-300 shrink-0">
-                            {item.karyawan.avatar ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={item.karyawan.avatar}
-                                alt={item.karyawan.nama}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center font-bold text-slate-600 text-xs">
-                                {item.karyawan.nama.slice(0, 1)}
-                              </div>
-                            )}
+                          <div
+                            aria-hidden="true"
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-600 ring-1 ring-slate-300"
+                          >
+                            {item.karyawan.nama.slice(0, 1)}
                           </div>
                           <span className="font-bold text-slate-900">
                             {item.karyawan.nama}

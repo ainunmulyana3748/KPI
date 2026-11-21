@@ -23,17 +23,11 @@ export function Navbar() {
           </div>
         </div>
         <div className="flex items-center gap-2.5 border-l border-slate-200 pl-4">
-          <div className="hidden size-9 items-center justify-center overflow-hidden rounded-full bg-indigo-50 font-semibold text-indigo-700 ring-2 ring-indigo-500/20 sm:flex">
-            {currentUser.avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.karyawanNama}
-                className="size-full object-cover"
-              />
-            ) : (
-              currentUser.karyawanNama.slice(0, 1)
-            )}
+          <div
+            aria-hidden="true"
+            className="hidden size-9 items-center justify-center rounded-full bg-indigo-50 font-semibold text-indigo-700 ring-2 ring-indigo-500/20 sm:flex"
+          >
+            {currentUser.karyawanNama.slice(0, 1)}
           </div>
           <div className="hidden sm:block">
             <p className="text-xs font-bold leading-tight text-slate-800">

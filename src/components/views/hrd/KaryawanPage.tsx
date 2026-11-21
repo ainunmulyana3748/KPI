@@ -279,19 +279,11 @@ export function KaryawanPage() {
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden ring-1 ring-slate-300 shrink-0">
-                          {k.avatar ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={k.avatar}
-                              alt={k.nama}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center font-bold text-slate-600 text-xs">
-                              {k.nama.slice(0, 1)}
-                            </div>
-                          )}
+                        <div
+                          aria-hidden="true"
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-600 ring-1 ring-slate-300"
+                        >
+                          {k.nama.slice(0, 1)}
                         </div>
                         <div>
                           <p className="font-bold text-slate-900 group-hover:text-indigo-600 transition">

@@ -196,19 +196,11 @@ export function FormNilaiKaryawan() {
       {/* Profile & Target Header */}
       <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-200 overflow-hidden ring-2 ring-indigo-500/10 shrink-0">
-            {karyawan.avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={karyawan.avatar}
-                alt={karyawan.nama}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center font-bold text-lg text-indigo-700">
-                {karyawan.nama.slice(0, 1)}
-              </div>
-            )}
+          <div
+            aria-hidden="true"
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-indigo-200 bg-indigo-50 text-lg font-bold text-indigo-700 ring-2 ring-indigo-500/10"
+          >
+            {karyawan.nama.slice(0, 1)}
           </div>
           <div>
             <div className="flex items-center gap-2">

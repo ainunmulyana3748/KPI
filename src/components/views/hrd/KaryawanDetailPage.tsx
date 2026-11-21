@@ -71,19 +71,11 @@ export function KaryawanDetailPage() {
       {/* Main Profile Card (Seluruh Informasi Karyawan) */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 pb-6 border-b border-slate-100">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-indigo-50 border-2 border-indigo-200 overflow-hidden ring-4 ring-indigo-50 shadow-md shrink-0">
-            {karyawan.avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={karyawan.avatar}
-                alt={karyawan.nama}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center font-bold text-2xl text-indigo-700">
-                {karyawan.nama.slice(0, 1)}
-              </div>
-            )}
+          <div
+            aria-hidden="true"
+            className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border-2 border-indigo-200 bg-indigo-50 text-2xl font-bold text-indigo-700 shadow-md ring-4 ring-indigo-50 sm:h-24 sm:w-24"
+          >
+            {karyawan.nama.slice(0, 1)}
           </div>
 
           <div className="flex-1">
