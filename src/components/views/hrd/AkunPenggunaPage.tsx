@@ -11,6 +11,8 @@ import {
   AlertCircle,
   X,
   Check,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { UserAccount, Role } from "@/types/kpi";
 
@@ -29,6 +31,8 @@ export function AkunPenggunaPage() {
   // Form states
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<Role>("karyawan");
   const [karyawanId, setKaryawanId] = useState(karyawanList[0]?.id || "");
   const [errorMsg, setErrorMsg] = useState("");
@@ -36,12 +40,16 @@ export function AkunPenggunaPage() {
 
   // Delete modal
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const handleOpenAdd = () => {
     const firstEmp = karyawanList[0];
     setEditingUser(null);
-    setUsername("");
+    setUsername(firstEmp ? firstEmp.email.split("@")[0] : "");
     setEmail(firstEmp ? firstEmp.email : "");
+    setPassword("");
+    setShowPassword(false);
     setRole(firstEmp ? firstEmp.role : "karyawan");
     setKaryawanId(firstEmp ? firstEmp.id : "");
     setErrorMsg("");
@@ -52,6 +60,8 @@ export function AkunPenggunaPage() {
     setEditingUser(u);
     setUsername(u.username);
     setEmail(u.email);
+    setPassword("");
+    setShowPassword(false);
     setRole(u.role);
     setKaryawanId(u.karyawanId);
     setErrorMsg("");
@@ -78,6 +88,16 @@ export function AkunPenggunaPage() {
       return;
     }
 
+    if (!editingUser && (!password || password.length < 6)) {
+      setErrorMsg("Password akun wajib diisi minimal 6 karakter.");
+      return;
+    }
+
+    if (editingUser && password && password.length < 6) {
+      setErrorMsg("Password baru minimal 6 karakter jika ingin diubah.");
+      return;
+    }
+
     const emp = karyawanList.find((k) => k.id === karyawanId);
     if (!emp) {
       setErrorMsg("Pilih karyawan pemilik akun.");
@@ -96,6 +116,7 @@ export function AkunPenggunaPage() {
             karyawanId: emp.id,
             karyawanNik: emp.id === editingUser.karyawanId ? editingUser.karyawanNik : emp.nik,
             karyawanNama: emp.id === editingUser.karyawanId ? editingUser.karyawanNama : emp.nama,
+            password: password ? password : undefined,
           }),
         });
         const result = await response.json();
@@ -105,12 +126,13 @@ export function AkunPenggunaPage() {
         }
         updateUser(editingUser.id, result.account as Partial<UserAccount>);
       } else {
-        const response = await fetch("/api/auth/invite", {
+        const response = await fetch("/api/auth/accounts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             username: username.trim(),
             email: email.trim(),
+            password,
             role,
             karyawanId: emp.id,
             karyawanNik: emp.nik,
@@ -120,7 +142,7 @@ export function AkunPenggunaPage() {
         });
         const result = await response.json();
         if (!response.ok) {
-          setErrorMsg(result.error || "Undangan tidak dapat dikirim.");
+          setErrorMsg(result.error || "Gagal membuat akun pengguna.");
           return;
         }
         addUser(result.account as UserAccount);
@@ -130,6 +152,27 @@ export function AkunPenggunaPage() {
       setErrorMsg("Koneksi terputus. Periksa jaringan lalu coba lagi.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setIsDeleting(true);
+    setDeleteError("");
+    try {
+      const response = await fetch(`/api/auth/accounts/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setDeleteError(result.error || "Gagal menghapus akun pengguna.");
+        return;
+      }
+      deleteUser(id);
+      setDeleteId(null);
+    } catch {
+      setDeleteError("Koneksi terputus saat menghapus akun.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -342,6 +385,39 @@ export function AkunPenggunaPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  {editingUser ? "Password Baru (Opsional)" : "Password Login"} <span className={editingUser ? "text-slate-400 font-normal" : "text-rose-500"}>
+                    {editingUser ? "(Kosongkan jika tidak diubah)" : "*"}
+                  </span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder={editingUser ? "Masukkan password baru jika ingin diubah" : "Minimal 6 karakter"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    minLength={6}
+                    required={!editingUser}
+                    className="w-full px-3 py-2 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition"
+                    title={showPassword ? "Sembunyikan password" : "Lihat password"}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  {editingUser
+                    ? "Kosongkan jika tidak ingin mengubah kata sandi user."
+                    : "Password ini langsung aktif sehingga user dapat langsung login tanpa perlu konfirmasi email."}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Role Akses Sistem <span className="text-rose-500">*</span>
                 </label>
                 <select
@@ -371,8 +447,8 @@ export function AkunPenggunaPage() {
                 >
                   <Check className="w-4 h-4" />
                   {isSubmitting
-                    ? editingUser ? "Menyimpan perubahan…" : "Mengirim undangan…"
-                    : editingUser ? "Simpan Perubahan" : "Kirim Undangan"}
+                    ? editingUser ? "Menyimpan perubahan…" : "Membuat akun…"
+                    : editingUser ? "Simpan Perubahan" : "Buat Akun"}
                 </button>
               </div>
             </form>
@@ -390,23 +466,31 @@ export function AkunPenggunaPage() {
             <p className="text-xs text-slate-500 mb-4">
               Akun ini tidak akan bisa login lagi ke sistem.
             </p>
+            {deleteError && (
+              <div className="mb-3 p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{deleteError}</span>
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setDeleteId(null)}
-                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
+                disabled={isDeleting}
+                onClick={() => {
+                  setDeleteId(null);
+                  setDeleteError("");
+                }}
+                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-50"
               >
                 Batal
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  deleteUser(deleteId);
-                  setDeleteId(null);
-                }}
-                className="px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs"
+                disabled={isDeleting}
+                onClick={() => handleDelete(deleteId)}
+                className="px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs disabled:opacity-50 flex items-center gap-1.5"
               >
-                Ya, Hapus
+                {isDeleting ? "Menghapus..." : "Ya, Hapus"}
               </button>
             </div>
           </div>
