@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Layanan undangan belum dikonfigurasi." }, { status: 503 });
   }
 
-  const admin = createSupabaseAdmin(supabaseUrl, serviceRoleKey, {
+  const cleanSupabaseUrl = supabaseUrl.replace(/\/rest\/v1\/?$/, "");
+  const admin = createSupabaseAdmin(cleanSupabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const { count, error: countError } = await admin
@@ -44,17 +45,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Akun awal sudah dibuat. Gunakan login Kinerja." }, { status: 409 });
   }
 
-  const redirectTo = process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || new URL("/auth/callback", request.nextUrl.origin).toString();
-  const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(initialHrd.email, {
-    data: { display_name: initialHrd.name },
-    redirectTo,
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
+    email: initialHrd.email,
+    password: "AdminKinerja2026!",
+    email_confirm: true,
+    user_metadata: { display_name: initialHrd.name },
   });
-  if (inviteError || !invited.user) {
-    return NextResponse.json({ error: "Undangan awal tidak dapat dikirim. Pastikan email belum terdaftar di Supabase Auth." }, { status: 400 });
+  if (createError || !created.user) {
+    return NextResponse.json({ error: "Akun awal tidak dapat dibuat. Pastikan email belum terdaftar di Supabase Auth." }, { status: 400 });
   }
 
   const { error: insertError } = await admin.from("user_accounts").insert({
-    id: invited.user.id,
+    id: created.user.id,
     username: initialHrd.username,
     email: initialHrd.email,
     role: "hrd",
@@ -64,9 +66,9 @@ export async function POST(request: NextRequest) {
     avatar: initialHrd.avatar,
   });
   if (insertError) {
-    await admin.auth.admin.deleteUser(invited.user.id);
+    await admin.auth.admin.deleteUser(created.user.id);
     return NextResponse.json({ error: "Profil akun awal tidak dapat disimpan." }, { status: 500 });
   }
 
-  return NextResponse.json({ message: `Undangan HRD telah dikirim ke ${initialHrd.email}.` }, { status: 201 });
+  return NextResponse.json({ message: `Akun HRD awal telah dibuat untuk ${initialHrd.email} dengan password: AdminKinerja2026!` }, { status: 201 });
 }

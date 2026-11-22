@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
@@ -48,7 +49,27 @@ export async function POST(request: NextRequest) {
   if (!error) return NextResponse.json({ success: true });
 
   if (error.code === "email_not_confirmed") {
-    return NextResponse.json({ error: "Konfirmasi email Anda sebelum masuk ke Kinerja." }, { status: 403 });
+    // Otomatis verifikasi email pengguna jika belum terverifikasi, lalu coba login ulang
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (serviceRoleKey && supabaseUrl) {
+      try {
+        const cleanSupabaseUrl = supabaseUrl.replace(/\/rest\/v1\/?$/, "");
+        const admin = createSupabaseAdmin(cleanSupabaseUrl, serviceRoleKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+        const { data: userList } = await admin.auth.admin.listUsers();
+        const targetUser = userList?.users.find((u) => u.email?.toLowerCase() === email);
+        if (targetUser) {
+          await admin.auth.admin.updateUserById(targetUser.id, { email_confirm: true });
+          const { error: retryError } = await supabase.auth.signInWithPassword({ email, password });
+          if (!retryError) return NextResponse.json({ success: true });
+        }
+      } catch {
+        // Fallback ke respons error jika terjadi kendala admin
+      }
+    }
+    return NextResponse.json({ error: "Email akun belum aktif. Silakan coba masuk kembali." }, { status: 403 });
   }
   if (error.status === 429) {
     return NextResponse.json({ error: "Terlalu banyak percobaan masuk. Coba lagi beberapa saat lagi." }, { status: 429 });
